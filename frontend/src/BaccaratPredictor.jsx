@@ -52,4 +52,3 @@ return ( <div className="max-w-xl mx-auto mt-10 space-y-4"> <h2 className="text-
 </div>
 
 ); }
-
