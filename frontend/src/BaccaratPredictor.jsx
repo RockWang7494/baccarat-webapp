@@ -72,4 +72,3 @@ return {
 function getErrorLog() { return [...errorLogRef.current]; }
 
 export { trainModel, defaultHistory, labelMap, reverseMap, getErrorLog };
-
