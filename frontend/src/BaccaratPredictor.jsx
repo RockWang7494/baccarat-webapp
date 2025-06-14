@@ -1,49 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react"; import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"; import * as XLSX from "xlsx";
 
-const labelMap = { "莊": 0, "閒": 1, "和": 2 }; const reverseLabelMap = ["莊", "閒", "和"];
+const labelMap = { "莊": 0, "閒": 1, "和": 2 }; const reverseMap = { 0: "莊", 1: "閒", 2: "和" };
 
-// 簡單預測函數 function predictNext(history) { if (history.length < 3) return "不足三局"; const last3 = history.slice(-3); if (last3.every(v => v === "閒")) return "莊"; if (last3.every(v => v === "莊")) return "閒"; return "莊"; }
+// 初始化並過濾預設歷史資料中的非法符號 const rawDefault = "莊莊莊閒閒閒莊閒莊閒閒閒閒閒莊閒閒和莊閒閒莊莊閒莊閒莊莊莊莊閒閒和閒莊閒莊和和".split(""); const defaultHistory = rawDefault.filter(c => Object.prototype.hasOwnProperty.call(labelMap, c));
 
-export default function BaccaratPredictor() { const [input, setInput] = useState(""); const [history, setHistory] = useState([]); const [prediction, setPrediction] = useState(""); const [record, setRecord] = useState([]); const [simulateResult, setSimulateResult] = useState([]); const [simCount, setSimCount] = useState(10);
+const errorLogRef = { current: [] };
 
-const handlePredict = () => { const clean = input.replace(/\s|,|→/g, "").split("").filter(c => ["莊", "閒", "和"].includes(c)); setHistory(clean); const next = predictNext(clean); setPrediction(next); setRecord(prev => [...prev, { input: [...clean], prediction: next }]); };
+function isValidSymbol(symbol) { return Object.prototype.hasOwnProperty.call(labelMap, symbol); }
 
-const handleClear = () => { setInput(""); setPrediction(""); setHistory([]); setRecord([]); setSimulateResult([]); };
+function trainModel(history, inputLength) { const data = []; const globalCounts = { 0: 0, 1: 0, 2: 0 }; errorLogRef.current = [];
 
-const handleSimulate = () => { let simHist = [...history]; const result = []; for (let i = 0; i < simCount; i++) { const next = predictNext(simHist); result.push(next); simHist.push(next); } setSimulateResult(result); };
+for (let i = inputLength; i < history.length; i++) { const row = []; let valid = true;
 
-return ( <div className="max-w-xl mx-auto mt-10 space-y-4"> <h2 className="text-xl font-bold">百家樂走勢預測</h2> <input type="text" placeholder="請輸入走勢，如：閒閒莊和和..." value={input} onChange={(e) => setInput(e.target.value)} className="w-full border p-2 rounded" /> <div className="flex gap-2 mt-2"> <button onClick={handlePredict} className="bg-blue-500 text-white px-4 py-1 rounded">預測下一局</button> <button onClick={handleClear} className="border px-4 py-1 rounded">清除</button> </div> {prediction && ( <div className="text-lg mt-4">👉 預測下一局：<span className="font-bold text-blue-600">{prediction}</span></div> )}
+for (let j = inputLength; j > 0; j--) {
+  const symbol = history[i - j];
+  if (!isValidSymbol(symbol)) {
+    const msg = `無效輸入符號 '${symbol}'，在 index ${i - j}`;
+    console.warn(msg);
+    errorLogRef.current.push(msg);
+    valid = false;
+    break;
+  }
+  row.push(labelMap[symbol]);
+}
 
-{record.length > 0 && (
-    <div className="mt-4">
-      <h3 className="font-semibold mb-1">預測紀錄：</h3>
-      <ul className="text-sm list-disc pl-5 space-y-1">
-        {record.map((r, i) => (
-          <li key={i}>
-            輸入：{r.input.join("")} → 預測：<span className="text-blue-600 font-bold">{r.prediction}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )}
+const outputSymbol = history[i];
+if (!valid || !isValidSymbol(outputSymbol)) {
+  if (!isValidSymbol(outputSymbol)) {
+    const msg = `無效預測符號 '${outputSymbol}'，在 index ${i}`;
+    console.warn(msg);
+    errorLogRef.current.push(msg);
+  }
+  continue;
+}
 
-  <div className="mt-6">
-    <h3 className="font-semibold mb-1">🔮 模擬連續對局</h3>
-    <div className="flex gap-2 items-center mb-2">
-      <label>模擬局數：</label>
-      <input type="number" value={simCount} min={1} max={50} onChange={e => setSimCount(parseInt(e.target.value))} className="w-20 border px-2 py-1 rounded" />
-      <button onClick={handleSimulate} className="bg-green-600 text-white px-4 py-1 rounded">開始模擬</button>
-    </div>
-    {simulateResult.length > 0 && (
-      <div>
-        <div className="text-sm">模擬結果：</div>
-        <div className="text-lg font-mono bg-gray-100 p-2 rounded">
-          {simulateResult.join(" → ")}
-        </div>
-      </div>
-    )}
-  </div>
-</div>
+row.push(labelMap[outputSymbol]);
+data.push(row);
+globalCounts[labelMap[outputSymbol]]++;
 
-); }
+}
+
+return (input) => { if (!Array.isArray(input) || input.length !== inputLength || input.some(v => typeof v !== "number" || Number.isNaN(v))) { const msg = 輸入格式錯誤，必須是長度為 ${inputLength} 的數字陣列：${JSON.stringify(input)}; console.error(msg); errorLogRef.current.push(msg); return { result: 0, distribution: [ { label: "莊", count: 0 }, { label: "閒", count: 0 }, { label: "和", count: 0 } ] }; }
+
+const inputStr = input.join("");
+const votes = {};
+
+for (const row of data) {
+  const key = row.slice(0, inputLength).join("");
+  if (key === inputStr) {
+    const label = row[inputLength];
+    votes[label] = (votes[label] || 0) + 1;
+  }
+}
+
+const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+if (sortedVotes.length > 0) {
+  return {
+    result: Number(sortedVotes[0][0]),
+    distribution: sortedVotes.map(([label, count]) => ({ label: reverseMap[label], count }))
+  };
+}
+
+const fallback = Object.entries(globalCounts).sort((a, b) => b[1] - a[1]);
+return {
+  result: fallback.length > 0 ? Number(fallback[0][0]) : 0,
+  distribution: fallback.map(([label, count]) => ({ label: reverseMap[label], count }))
+};
+
+}; }
+
+function getErrorLog() { return [...errorLogRef.current]; }
+
+export { trainModel, defaultHistory, labelMap, reverseMap, getErrorLog };
 
