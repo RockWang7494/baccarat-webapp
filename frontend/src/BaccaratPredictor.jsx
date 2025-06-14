@@ -2,13 +2,15 @@ import React, { useState, useMemo } from "react"; import { LineChart, Line, XAxi
 
 const labelMap = { "莊": 0, "閒": 1, "和": 2 }; const reverseLabelMap = ["莊", "閒", "和"];
 
-function predictNext(history) { if (history.length < 3) return "不足三局"; const last3 = history.slice(-3); if (last3.every((v) => v === "閒")) return "莊"; if (last3.every((v) => v === "莊")) return "閒"; return "莊"; }
+function predictNext(history) { if (history.length < 3) return "不足三局"; const last = history[history.length - 1]; const secondLast = history[history.length - 2]; const thirdLast = history[history.length - 3];
 
-export default function BaccaratPredictor() { const [input, setInput] = useState(""); const [history, setHistory] = useState([]); const [prediction, setPrediction] = useState(""); const [records, setRecords] = useState([]); const [accuracy, setAccuracy] = useState(null); const [simulationRounds, setSimulationRounds] = useState(5); const [simulatedResults, setSimulatedResults] = useState([]);
+// 更進階：統計前三局後出現最多的結果 const pattern = ${thirdLast}${secondLast}${last}; const patterns = {}; for (let i = 0; i < history.length - 3; i++) { const seq = ${history[i]}${history[i+1]}${history[i+2]}; const next = history[i+3]; if (seq === pattern) { patterns[next] = (patterns[next] || 0) + 1; } } const sorted = Object.entries(patterns).sort((a,b) => b[1]-a[1]); if (sorted.length > 0) return sorted[0][0]; return last === "莊" ? "閒" : "莊"; // fallback }
 
-const handleClear = () => { setInput(""); setPrediction(""); setHistory([]); setRecords([]); setAccuracy(null); setSimulatedResults([]); };
+export default function BaccaratPredictor() { const [input, setInput] = useState(""); const [history, setHistory] = useState([]); const [prediction, setPrediction] = useState(""); const [records, setRecords] = useState([]); const [accuracy, setAccuracy] = useState(null); const [simulationRounds, setSimulationRounds] = useState(5); const [simulatedResults, setSimulatedResults] = useState([]); const [predictionLog, setPredictionLog] = useState([]);
 
-const handleAdd = (symbol) => { const updated = [...history, symbol]; setHistory(updated); const next = predictNext(updated); setPrediction(next); const updatedRecords = [...records, { actual: symbol, predicted: next }]; setRecords(updatedRecords); updateAccuracy(updatedRecords); simulateFuture(updated, simulationRounds); };
+const handleClear = () => { setInput(""); setPrediction(""); setHistory([]); setRecords([]); setAccuracy(null); setSimulatedResults([]); setPredictionLog([]); };
+
+const handleAdd = (symbol) => { const updated = [...history, symbol]; setHistory(updated); const next = predictNext(updated); setPrediction(next); const updatedRecords = [...records, { actual: symbol, predicted: next }]; setRecords(updatedRecords); updateAccuracy(updatedRecords); simulateFuture(updated, simulationRounds); setPredictionLog(prev => [...prev, { round: updated.length, actual: symbol, predicted: next }]); };
 
 const updateAccuracy = (records) => { const correct = records.filter((r) => r.actual === r.predicted).length; const total = records.length; setAccuracy(total > 0 ? ((correct / total) * 100).toFixed(1) : null); };
 
@@ -22,11 +24,81 @@ const patternAnalysis = useMemo(() => { const result = { 莊: 0, 閒: 0 }; let l
 
 const streakStats = useMemo(() => { let longStreak = 0; let singleJumps = 0; let count = 1; for (let i = 1; i < history.length; i++) { if (history[i] === history[i - 1]) { count++; } else { if (count >= 3) longStreak++; if (count === 1) singleJumps++; count = 1; } } if (count >= 3) longStreak++; if (count === 1) singleJumps++; const total = longStreak + singleJumps; return { longStreak, singleJumps, longRate: total > 0 ? ((longStreak / total) * 100).toFixed(1) : 0, jumpRate: total > 0 ? ((singleJumps / total) * 100).toFixed(1) : 0 }; }, [history]);
 
-return ( <div className="max-w-xl mx-auto mt-10 space-y-4"> <h2 className="text-xl font-bold">百家樂走勢預測</h2> <input
-type="text"
-placeholder="請輸入走勢，如：閒閒莊和和..."
-value={input}
-onChange={handleInputChange}
-className="w-full border p-2 rounded"
-/> <div className="flex gap-2 mt-2"> <button onClick={handleClear} className="border px-4 py-1 rounded">清除</button> </div> <div className="flex gap-2 mt-2"> <button onClick={() => handleAdd("莊")} className="bg-red-500 text-white px-3 py-1 rounded">莊</button> <button onClick={() => handleAdd("閒")} className="bg-green-500 text-white px-3 py-1 rounded">閒</button> <button onClick={() => handleAdd("和")} className="bg-gray-500 text-white px-3 py-1 rounded">和</button> </div> {prediction && ( <div className="text-lg mt-4">👉 預測下一局：<span className="font-bold text-blue-600">{prediction}</span></div> )} {accuracy !== null && ( <div className="text-md mt-2">🎯 命中率：<span className="font-semibold">{accuracy}%</span></div> )} {simulatedResults.length > 0 && ( <div className="text-sm mt-2">🔮 模擬預測（{simulationRounds} 局）：{simulatedResults.join(" → ")}</div> )} <div className="mt-4"> <ResponsiveContainer width="100%" height={200}> <LineChart data={chartData}> <XAxis dataKey="name" /> <YAxis allowDecimals={false} domain={[0, 2]} tickFormatter={(v) => reverseLabelMap[v]} /> <Tooltip formatter={(value) => reverseLabelMap[value]} /> <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={{ r: 3 }} /> </LineChart> </ResponsiveContainer> </div> <div className="mt-4"> <h3 className="font-semibold">📊 走勢型態分析</h3> <ResponsiveContainer width="100%" height={150}> <BarChart data={patternAnalysis}> <CartesianGrid strokeDasharray="3 3" /> <XAxis dataKey="name" /> <YAxis allowDecimals={false} /> <Tooltip /> <Legend /> <Bar dataKey="value" fill="#82ca9d" /> </BarChart> </ResponsiveContainer> <div className="text-sm mt-2"> 📈 長龍次數：{streakStats.longStreak}（{streakStats.longRate}%）｜單跳次數：{streakStats.singleJumps}（{streakStats.jumpRate}%） </div> </div> </div> ); }
+return ( <div className="max-w-xl mx-auto mt-10 space-y-4"> <h2 className="text-xl font-bold">百家樂走勢預測</h2>
+
+<input
+    type="text"
+    placeholder="請輸入走勢，如：閒閒莊和和..."
+    value={input}
+    onChange={handleInputChange}
+    className="w-full border p-2 rounded"
+  />
+
+  <div className="flex gap-2 mt-2">
+    <button onClick={handleClear} className="border px-4 py-1 rounded">清除</button>
+  </div>
+
+  <div className="flex gap-2 mt-2">
+    <button onClick={() => handleAdd("莊")} className="bg-red-500 text-white px-3 py-1 rounded">莊</button>
+    <button onClick={() => handleAdd("閒")} className="bg-green-500 text-white px-3 py-1 rounded">閒</button>
+    <button onClick={() => handleAdd("和")} className="bg-gray-500 text-white px-3 py-1 rounded">和</button>
+  </div>
+
+  {prediction && (
+    <div className="text-lg mt-4">
+      👉 預測下一局：<span className="font-bold text-blue-600">{prediction}</span>
+    </div>
+  )}
+
+  {accuracy !== null && (
+    <div className="text-md mt-2">
+      🎯 命中率：<span className="font-semibold">{accuracy}%</span>
+    </div>
+  )}
+
+  {simulatedResults.length > 0 && (
+    <div className="text-sm mt-2">
+      🔮 模擬預測（{simulationRounds} 局）：{simulatedResults.join(" → ")}
+    </div>
+  )}
+
+  <div className="mt-4">
+    <ResponsiveContainer width="100%" height={200}>
+      <LineChart data={chartData}>
+        <XAxis dataKey="name" />
+        <YAxis allowDecimals={false} domain={[0, 2]} tickFormatter={(v) => reverseLabelMap[v]} />
+        <Tooltip formatter={(value) => reverseLabelMap[value]} />
+        <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+
+  <div className="mt-4">
+    <h3 className="font-semibold">📊 走勢型態分析</h3>
+    <ResponsiveContainer width="100%" height={150}>
+      <BarChart data={patternAnalysis}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" />
+        <YAxis allowDecimals={false} />
+        <Tooltip />
+        <Legend />
+        <Bar dataKey="value" fill="#82ca9d" />
+      </BarChart>
+    </ResponsiveContainer>
+    <div className="text-sm mt-2">
+      📈 長龍次數：{streakStats.longStreak}（{streakStats.longRate}%）｜單跳次數：{streakStats.singleJumps}（{streakStats.jumpRate}%）
+    </div>
+  </div>
+
+  <div className="mt-4">
+    <h3 className="font-semibold">🧾 歷史預測紀錄</h3>
+    <ul className="text-sm list-disc pl-5">
+      {predictionLog.map((log, idx) => (
+        <li key={idx}>第 {log.round} 局｜實際：{log.actual}｜預測：{log.predicted}</li>
+      ))}
+    </ul>
+  </div>
+</div>
+
+); }
 
