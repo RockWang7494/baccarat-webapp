@@ -1,12 +1,24 @@
-// 1. 安裝 Firebase SDK（如果尚未安裝） // npm install firebase
+// firebase.js
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore"; // 若你要用資料庫功能
 
-// 2. 在你的 React 專案中建立 firebase.js
+const firebaseConfig = {
+  apiKey: "AIzaSyCY_FH81SfoFghi2xp69-8-1n5pn11V3Yg",
+  authDomain: "baccarat-predictor-c5e6b.firebaseapp.com",
+  projectId: "baccarat-predictor-c5e6b",
+  storageBucket: "baccarat-predictor-c5e6b.firebasestorage.app",
+  messagingSenderId: "455344532976",
+  appId: "1:455344532976:web:6606d1c9799bbbd0e1c135",
+  measurementId: "G-Q922F4DNZS"
+};
 
-// src/firebase.js import { initializeApp } from "firebase/app"; import { getFirestore } from "firebase/firestore";
+// 初始化 Firebase App
+const app = initializeApp(firebaseConfig);
 
-const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT_ID.firebaseapp.com", projectId: "YOUR_PROJECT_ID", storageBucket: "YOUR_PROJECT_ID.appspot.com", messagingSenderId: "YOUR_SENDER_ID", appId: "YOUR_APP_ID" };
+// 你可選擇使用的服務
+const analytics = getAnalytics(app);
+const db = getFirestore(app); // 若要存資料進 Firestore
 
-const app = initializeApp(firebaseConfig); const db = getFirestore(app);
-
-export { db };
-
+// 匯出
+export { app, analytics, db };
