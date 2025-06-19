@@ -6,9 +6,7 @@ import Predictor from './components/Predictor';
 // 英文轉中文
 const convertToChinese = (word) => {
   if (word === 'banker') return '莊家';
-  if (word === 'player') return '閒家';
-  return word;
-};
+  if (word === 'player') 
 
 function App() {
   const [history, setHistory] = useState(sampleHistory);
