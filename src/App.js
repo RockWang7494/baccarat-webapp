@@ -1,9 +1,10 @@
 import React from 'react';
+import Predictor from './components/Predictor';
 
 function App() {
   return (
-    <div>
-      <h1>Hello, Baccarat WebApp!</h1>
+    <div className="App">
+      <Predictor />
     </div>
   );
 }
