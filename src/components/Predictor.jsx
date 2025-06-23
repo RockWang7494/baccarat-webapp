@@ -1,57 +1,41 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState } from 'react';
 
-const labelMap = { "莊": 0, "閒": 1, "和": 2 };
-const reverseLabelMap = ["莊", "閒", "和"];
-
-// 模擬預測函數
-function predictNext(history) {
-  if (history.length < 3) return "不足三局";
-  const last3 = history.slice(-3);
-  if (last3.every(v => v === "閒")) return "莊";
-  if (last3.every(v => v === "莊")) return "閒";
-  return "莊";
-}
-
-export default function BaccaratPredictor() {
-  const [input, setInput] = useState("");
+const Predictor = () => {
   const [history, setHistory] = useState([]);
-  const [prediction, setPrediction] = useState("");
+  const [prediction, setPrediction] = useState('');
 
   const handlePredict = () => {
-    const clean = input.replace(/\s|,|→/g, "").split("").filter(c => ["莊", "閒", "和"].includes(c));
-    setHistory(clean);
-    const next = predictNext(clean);
-    setPrediction(next);
-  };
-
-  const handleClear = () => {
-    setInput("");
-    setPrediction("");
-    setHistory([]);
+    const outcomes = ['莊', '閒', '和'];
+    const result = outcomes[Math.floor(Math.random() * outcomes.length)];
+    setPrediction(result);
+    setHistory([...history, result]);
   };
 
   return (
-    <Card className="p-4 bg-white rounded shadow">
-      <CardContent>
-        <h2 className="text-xl font-bold mb-2">百家樂走勢預測</h2>
-        <div className="mb-4">
-          <Input
-            placeholder="請輸入走勢，如：閒閒莊和和..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
+    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+      <button 
+        onClick={handlePredict}
+        style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+      >
+        預測下一局
+      </button>
+
+      {prediction && (
+        <div style={{ marginTop: '1rem', fontSize: '20px' }}>
+          🧠 預測結果：<strong>{prediction}</strong>
         </div>
-        <div className="mb-4 flex gap-2">
-          <Button onClick={handlePredict} className="bg-blue-500">預測下一局</Button>
-          <Button onClick={handleClear} className="bg-red-500">清除</Button>
-        </div>
-        {prediction && (
-          <div className="text-lg text-green-600">👉 預測下一局：{prediction}</div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+
+      <div style={{ marginTop: '1rem' }}>
+        <h3>歷史預測紀錄：</h3>
+        <ul>
+          {history.map((item, index) => (
+            <li key={index}>第 {index + 1} 局：{item}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
-}
+};
+
+export default Predictor;
