@@ -13,11 +13,15 @@ const Predictor = () => {
 
   return (
     <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-      <button 
+      <button
         onClick={handlePredict}
-        style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+        style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          cursor: 'pointer'
+        }}
       >
-        預測下一局
+        ▶️ 預測下一局
       </button>
 
       {prediction && (
